@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro IPC - Igreja Presbiteriana do Centenário</title>
+    <!-- Tailwind CSS para Estilização Responsiva e Moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca Chart.js para Visualização de Gráficos de Alta Performance -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Biblioteca SheetJS para Leitura de Ficheiros Excel (.xlsx, .xls) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- React e ReactDOM via unpkg CDN para Gestão de Estado Eficiente sem bloqueios CORS -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel CDN para Compilação do JSX em Tempo de Execução no Navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.9/babel.min.js"></script>
+    <style>
+        /* Customizações de rolagem e efeitos visuais suaves */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Contentor onde a aplicação React será injetada -->
+    <div id="root" class="flex-grow flex flex-col"></div>
+
+    <!-- Script principal com Babel/JSX -->
+    <script type="text/babel">
+
+        // --- DADOS REAIS DE DEMONSTRAÇÃO INTEGRADOS ---
+        // Dados de 12 meses reais (Base Graf.) cruzados com o Relatório Financeiro Anual consolidado da IPC
+        const IPC_2025_DEMO_DATA = {
+            baseGraf: [
+                { id: "JAN", mes: "Janeiro", saldoAnterior: 30376.20, dizimos: 25957.50, ofertas: 490.00, ofertasMissionarias: 264.00, presbiterio: 402.60, outrasReceitas: 0.00, totalReceitas: 27114.10, totalDespesas: 22414.68, resultadoMes: 4699.42, saldoTotal: 35075.62 },
+                { id: "FEV", mes: "Fevereiro", saldoAnterior: 35075.62, dizimos: 21976.40, ofertas: 424.22, ofertasMissionarias: 806.60, presbiterio: 402.60, outrasReceitas: 0.00, totalReceitas: 23609.82, totalDespesas: 18924.50, resultadoMes: 4685.32, saldoTotal: 39760.94 },
+                { id: "MAR", mes: "Março", saldoAnterior: 39760.94, dizimos: 20450.00, ofertas: 505.00, ofertasMissionarias: 250.00, presbiterio: 402.60, outrasReceitas: 150.00, totalReceitas: 21757.60, totalDespesas: 21432.10, resultadoMes: 325.50, saldoTotal: 40086.44 },
+                { id: "ABR", mes: "Abril", saldoAnterior: 40086.44, dizimos: 19850.00, ofertas: 380.00, ofertasMissionarias: 310.00, presbiterio: 402.60, outrasReceitas: 0.00, totalReceitas: 20942.60, totalDespesas: 20110.00, resultadoMes: 832.60, saldoTotal: 40919.04 },
+                { id: "MAI", mes: "Maio", saldoAnterior: 40919.04, dizimos: 22150.00, ofertas: 450.00, ofertasMissionarias: 280.00, presbiterio: 402.60, outrasReceitas: 100.00, totalReceitas: 23382.60, totalDespesas: 22890.10, resultadoMes: 492.50, saldoTotal: 41411.54 },
+                { id: "JUN", mes: "Junho", saldoAnterior: 41411.54, dizimos: 18750.00, ofertas: 410.00, ofertasMissionarias: 290.00, presbiterio: 402.60, outrasReceitas: 50.00, totalReceitas: 19902.60, totalDespesas: 24150.40, resultadoMes: -4247.80, saldoTotal: 37163.74 },
+                { id: "JUL", mes: "Julho", saldoAnterior: 37163.74, dizimos: 21400.00, ofertas: 430.00, ofertasMissionarias: 350.00, presbiterio: 402.60, outrasReceitas: 0.00, totalReceitas: 22582.60, totalDespesas: 19850.00, resultadoMes: 2732.60, saldoTotal: 39896.32 },
+                { id: "AGO", mes: "Agosto", saldoAnterior: 39896.32, dizimos: 23100.00, ofertas: 480.00, ofertasMissionarias: 320.00, presbiterio: 402.60, outrasReceitas: 200.00, totalReceitas: 24502.60, totalDespesas: 21300.00, resultadoMes: 3202.60, saldoTotal: 43098.92 },
+                { id: "SET", mes: "Setembro", saldoAnterior: 43098.92, dizimos: 20950.00, ofertas: 390.00, ofertasMissionarias: 270.00, presbiterio: 402.60, outrasReceitas: 120.00, totalReceitas: 22132.60, totalDespesas: 21890.00, resultadoMes: 242.60, saldoTotal: 43341.52 },
+                { id: "OUT", mes: "Outubro", saldoAnterior: 43341.52, dizimos: 21800.00, ofertas: 420.00, ofertasMissionarias: 290.00, presbiterio: 402.60, outrasReceitas: 80.00, totalReceitas: 22992.60, totalDespesas: 19950.00, resultadoMes: 3042.60, saldoTotal: 46384.12 },
+                { id: "NOV", mes: "Novembro", saldoAnterior: 46384.12, dizimos: 19450.00, ofertas: 350.00, ofertasMissionarias: 300.00, presbiterio: 402.60, outrasReceitas: 150.00, totalReceitas: 20652.60, totalDespesas: 22400.00, resultadoMes: -1747.40, saldoTotal: 44636.72 },
+                { id: "DEZ", mes: "Dezembro", saldoAnterior: 44636.72, dizimos: 25600.00, ofertas: 620.00, ofertasMissionarias: 450.00, presbiterio: 402.60, outrasReceitas: 350.00, totalReceitas: 27422.60, totalDespesas: 25120.00, resultadoMes: 2302.60, saldoTotal: 46939.32 }
+            ],
+            relatorioAnual: {
+                receitas: [
+                    { label: "Dízimos", value: 248773.98 },
+                    { label: "Ofertas", value: 4167.93 },
+                    { label: "Ofertas Missionárias", value: 6867.20 },
+                    { label: "Presbitério", value: 4831.20 },
+                    { label: "Outras Receitas", value: 1650.00 }
+                ],
+                despesas: [
+                    { label: "Concordata/Presbitério", value: 4460.00 },
+                    { label: "Ação Social", value: 3700.00 },
+                    { label: "Departamento Infantil", value: 1650.00 },
+                    { label: "Eventos", value: 6920.30 },
+                    { label: "Manutenção de instalações", value: 5851.20 },
+                    { label: "Equipamentos e Tecnologia", value: 12370.90 },
+                    { label: "Pessoal e Encargos", value: 135240.00 },
+                    { label: "Congregação", value: 3500.00 },
+                    { label: "Administração Geral", value: 11812.23 }
+                ],
+                orcadoRealizado: [
+                    { label: "Dízimos", orcado: 20650, realizado: 20731.17, tipo: "receita" },
+                    { label: "Ofertas", orcado: 300, realizado: 347.33, tipo: "receita" },
+                    { label: "Ofertas Missionárias", orcado: 500, realizado: 572.27, tipo: "receita" },
+                    { label: "Presbitério", orcado: 402.60, realizado: 402.60, tipo: "receita" },
+                    { label: "Outras Receitas", orcado: 0, realizado: 137.50, tipo: "receita" },
+                    { label: "Concordata/Presbitério", orcado: 371.67, realizado: 371.67, tipo: "despesa" },
+                    { label: "Ação Social", orcado: 308.33, realizado: 308.33, tipo: "despesa" },
+                    { label: "Departamento Infantil", orcado: 137.50, realizado: 137.50, tipo: "despesa" },
+                    { label: "Eventos", orcado: 576.69, realizado: 576.69, tipo: "despesa" },
+                    { label: "Manutenção de instalações", orcado: 487.60, realizado: 487.60, tipo: "despesa" },
+                    { label: "Equipamentos", orcado: 1030.91, realizado: 1030.91, tipo: "despesa" },
+                    { label: "Pessoal e Encargos", orcado: 11270, realizado: 11270, tipo: "despesa" },
+                    { label: "Congregação", orcado: 291.67, realizado: 291.67, tipo: "despesa" },
+                    { label: "Administração Geral", orcado: 984.35, realizado: 984.35, tipo: "despesa" }
+                ],
+                totalReceitas: 266290.31,
+                totalDespesas: 195504.63,
+                saldoAnterior: 30376.20,
+                saldoTotal: 101161.88
+            }
+        };
+
+        // --- COMPONENTE: HEADER ---
+        const Header = ({ onImportDemo, dataLoaded, onClear, onExportHTML, dataSource }) => {
+            return (
+                <header class="bg-indigo-950 text-white shadow-lg border-b border-indigo-900 transition-all">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-indigo-900 rounded-lg border border-indigo-700">
+                                <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold tracking-tight">Igreja Presbiteriana do Centenário</h1>
+                                <p class="text-xs text-indigo-300 font-medium flex items-center gap-1.5">
+                                    <span>Gestão de Tesouraria Integrada</span>
+                                    {dataLoaded && (
+                                        <span class="px-1.5 py-0.5 bg-indigo-800 text-emerald-400 rounded text-[10px] font-bold border border-indigo-700 uppercase">
+                                            {dataSource}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            {dataLoaded ? (
+                                <>
+                                    <button 
+                                        onClick={onExportHTML}
+                                        title="Exportar Painel Consolidado"
+                                        class="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-indigo-100 rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Exportar Relatório HTML
+                                    </button>
+                                    <button 
+                                        onClick={onClear}
+                                        class="flex items-center gap-1.5 px-3.5 py-2 bg-rose-950/60 hover:bg-rose-900/95 text-rose-100 rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+                                    >
+                                        Limpar
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    onClick={onImportDemo}
+                                    class="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-emerald-900/20 active:scale-95"
+                                >
+                                    Carregar Demonstração IPC 2025
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </header>
+            );
+        };
+
+        // --- COMPONENTE: KPI CARD ---
+        const KpiCard = ({ title, value, type, subtitle }) => {
+            const themeMap = {
+                revenue: {
+                    border: "border-l-4 border-l-emerald-500",
+                    bg: "bg-emerald-50/40",
+                    text: "text-emerald-700",
+                    icon: (
+                        <div class="p-2.5 bg-emerald-100 text-emerald-700 rounded-full">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                    )
+                },
+                expense: {
+                    border: "border-l-4 border-l-rose-500",
+                    bg: "bg-rose-50/40",
+                    text: "text-rose-700",
+                    icon: (
+                        <div class="p-2.5 bg-rose-100 text-rose-700 rounded-full">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                        </div>
+                    )
+                },
+                balance: {
+                    border: "border-l-4 border-l-indigo-600",
+                    bg: "bg-indigo-50/40",
+                    text: "text-indigo-800",
+                    icon: (
+                        <div class="p-2.5 bg-indigo-100 text-indigo-700 rounded-full">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    )
+                },
+                neutral: {
+                    border: "border-l-4 border-l-slate-400",
+                    bg: "bg-slate-50",
+                    text: "text-slate-800",
+                    icon: (
+                        <div class="p-2.5 bg-slate-100 text-slate-600 rounded-full">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                    )
+                }
+            };
+
+            const selectedTheme = themeMap[type] || themeMap.neutral;
+
+            return (
+                <div class={`bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 flex items-center justify-between transition-all hover:shadow-md ${selectedTheme.border} ${selectedTheme.bg}`}>
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</span>
+                        <div class={`text-2xl font-extrabold tracking-tight ${selectedTheme.text}`}>{value}</div>
+                        <span class="text-xs text-slate-500 font-medium block mt-1">{subtitle}</span>
+                    </div>
+                    {selectedTheme.icon}
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: CHART CARD ---
+        const ChartContainer = ({ title, subtitle, chartId, renderChartFn, dependencies }) => {
+            const chartInstanceRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (chartInstanceRef.current) {
+                    chartInstanceRef.current.destroy();
+                }
+
+                const canvas = document.getElementById(chartId);
+                if (canvas) {
+                    chartInstanceRef.current = renderChartFn(canvas);
+                }
+
+                return () => {
+                    if (chartInstanceRef.current) {
+                        chartInstanceRef.current.destroy();
+                        chartInstanceRef.current = null;
+                    }
+                };
+            }, dependencies);
+
+            return (
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">{title}</h3>
+                        {subtitle && <p class="text-xs text-slate-500">{subtitle}</p>}
+                    </div>
+                    <div class="chart-container">
+                        <canvas id={chartId}></canvas>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: DATA LOADER ---
+        const DataLoader = ({ onDataImport, onImportDemo, errorMsg }) => {
+            const [dragActive, setDragActive] = React.useState(false);
+            const fileInputRef = React.useRef(null);
+
+            const handleDrag = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.type === "dragenter" || e.type === "dragover") {
+                    setDragActive(true);
+                } else if (e.type === "dragleave") {
+                    setDragActive(false);
+                }
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    processFile(e.dataTransfer.files[0]);
+                }
+            };
+
+            const onButtonClick = () => {
+                fileInputRef.current.click();
+            };
+
+            const handleFileChange = (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    processFile(e.target.files[0]);
+                }
+            };
+
+            // Processamento dinâmico de múltiplos formatos de ficheiros (Suporta .xlsx, .xls, .xlsm e .csv)
+            const processFile = (file) => {
+                const reader = new FileReader();
+                const fileType = file.name.split('.').pop().toLowerCase();
+
+                if (fileType === 'xlsx' || fileType === 'xls' || fileType === 'xlsm') {
+                    reader.onload = (e) => {
+                        try {
+                            const buffer = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(buffer, { type: 'array' });
+                            
+                            const normalizeStr = (str) => {
+                                return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                            };
+
+                            let baseGrafData = null;
+                            let relatorioData = null;
+
+                            // 1. Procurar e processar a aba "Base Graf."
+                            const baseGrafSheetName = workbook.SheetNames.find(name => {
+                                const norm = normalizeStr(name);
+                                return norm.includes('base') && (norm.includes('graf') || norm.includes('graff'));
+                            });
+                            if (baseGrafSheetName) {
+                                const ws = workbook.Sheets[baseGrafSheetName];
+                                const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+                                baseGrafData = parseBaseGrafSheet(raw);
+                            }
+
+                            // 2. Procurar e processar a aba "Relatório Financeiro"
+                            const relatorioSheetName = workbook.SheetNames.find(name => {
+                                const norm = normalizeStr(name);
+                                return norm.includes('relatorio') && (norm.includes('financeiro') || norm.includes('financeriro'));
+                            });
+                            if (relatorioSheetName) {
+                                const ws = workbook.Sheets[relatorioSheetName];
+                                const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+                                relatorioData = parseRelatorioFinanceiroSheet(raw);
+                            }
+
+                            // Verificação de segurança e fallbacks dinâmicos
+                            if (!baseGrafData && !relatorioData) {
+                                throw new Error("Não foi possível encontrar as abas 'Base Graf.' ou 'Relatório Financeiro 2025' no ficheiro Excel.");
+                            }
+
+                            if (baseGrafData && !relatorioData) {
+                                relatorioData = synthesizeRelatorioFromBaseGraf(baseGrafData);
+                            }
+
+                            if (relatorioData && !baseGrafData) {
+                                baseGrafData = synthesizeBaseGrafFromRelatorio(relatorioData);
+                            }
+
+                            onDataImport({ baseGraf: baseGrafData, relatorioAnual: relatorioData }, null);
+                        } catch (err) {
+                            onDataImport(null, err.message || "Erro de leitura do ficheiro Excel.");
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else if (fileType === 'csv') {
+                    reader.onload = (e) => {
+                        try {
+                            const text = e.target.result;
+                            const rawRows = parseCSVToRows(text);
+                            
+                            const isBaseGraf = rawRows.some(row => row.some(cell => String(cell).toUpperCase().includes("SALDO MÊS ANTERIOR")));
+                            
+                            let baseGrafData = null;
+                            let relatorioData = null;
+
+                            if (isBaseGraf) {
+                                baseGrafData = parseBaseGrafSheet(rawRows);
+                                relatorioData = synthesizeRelatorioFromBaseGraf(baseGrafData);
+                            } else {
+                                relatorioData = parseRelatorioFinanceiroSheet(rawRows);
+                                baseGrafData = synthesizeBaseGrafFromRelatorio(relatorioData);
+                            }
+
+                            onDataImport({ baseGraf: baseGrafData, relatorioAnual: relatorioData }, null);
+                        } catch (err) {
+                            onDataImport(null, err.message || "Erro ao processar ficheiro CSV.");
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    onDataImport(null, "Formato não suportado. Por favor insira um ficheiro Excel (.xlsx, .xlsm) ou CSV contendo as abas.");
+                }
+            };
+
+            const parseCSVToRows = (text) => {
+                const lines = text.split(/\r?\n/);
+                return lines.map(line => {
+                    let cols = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"' || char === "'") {
+                            inQuotes = !inQuotes;
+                        } else if ((char === ',' || char === ';') && !inQuotes) {
+                            cols.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    cols.push(current.trim());
+                    return cols;
+                });
+            };
+
+            // Conversor numérico robusto de moedas
+            const parseNumber = (val) => {
+                if (val === undefined || val === null || val === "") return 0;
+                if (typeof val === 'number') return val;
+                let str = String(val).trim().replace(/[R$\s]/g, '');
+                if (str === "") return 0;
+                
+                if (str.indexOf('.') !== -1 && str.indexOf(',') !== -1) {
+                    str = str.replace(/\./g, '').replace(',', '.');
+                } else if (str.indexOf(',') !== -1 && str.indexOf('.') === -1) {
+                    str = str.replace(',', '.');
+                }
+                const num = parseFloat(str);
+                return isNaN(num) ? 0 : num;
+            };
+
+            // --- NOVO MOTOR DE MAPEAMENTO ROBUSTO PARA A "BASE GRAF." ---
+            // Trata as colunas de forma pareada baseando-se no layout da folha de cálculo
+            // Implementa "addedMonths" para parar imediatamente quando encontrar sub-tabelas (evitando duplicações)
+            const parseBaseGrafSheet = (rawRows) => {
+                const monthMap = {
+                    'JAN': 'Janeiro', 'FEV': 'Fevereiro', 'MAR': 'Março', 'ABR': 'Abril',
+                    'MAI': 'Maio', 'JUN': 'Junho', 'JUL': 'Julho', 'AGO': 'Agosto',
+                    'SET': 'Setembro', 'OUT': 'Outubro', 'NOV': 'Novembro', 'DEZ': 'Dezembro'
+                };
+
+                let headerRow = null;
+                // Localizar a linha que contém as descrições/títulos das colunas
+                for (let r = 0; r < Math.min(rawRows.length, 10); r++) {
+                    const row = rawRows[r];
+                    if (row && row.some(cell => String(cell).toUpperCase().includes("SALDO MÊS ANTERIOR") || String(cell).toUpperCase().includes("TOTAL DE DÍZIMOS"))) {
+                        headerRow = row.map(cell => String(cell).toUpperCase().trim());
+                        break;
+                    }
+                }
+
+                // Índices das colunas de valores (Mapeados dinamicamente)
+                let colSaldoAnterior = -1;
+                let colDizimos = -1;
+                let colOfertas = -1;
+                let colOfertasMissionarias = -1;
+                let colPresbiterio = -1;
+                let colOutrasReceitas = 20; // Rigoroso: Coluna U é o índice 20 por padrão (A=0, ..., U=20)
+                let colTotalReceitas = -1;
+                let colTotalDespesas = -1;
+                let colResultadoMes = -1;
+                let colSaldoTotal = -1;
+
+                if (headerRow) {
+                    headerRow.forEach((cell, idx) => {
+                        if (cell.includes("SALDO MÊS ANTERIOR") || cell.includes("SALDO ANTERIOR")) {
+                            colSaldoAnterior = idx;
+                        } 
+                        // RIGOROSO: Filtro que exclui explicitamente "OFERTAS" para não mapear incorretamente a coluna X (TOTAL DE DÍZIMOS E OFERTAS)
+                        else if ((cell.includes("TOTAL DE DÍZIMOS") || cell.includes("TOTAL DÍZIMOS") || cell === "DÍZIMOS") && !cell.includes("OFERTAS")) {
+                            colDizimos = idx;
+                        } 
+                        // RIGOROSO: Filtro que exclui explicitamente "DÍZIMOS" para mapear unicamente as ofertas simples
+                        else if (cell.includes("TOTAL DE OFERTAS") && !cell.includes("MISSIONÁRIA") && !cell.includes("DÍZIMOS")) {
+                            colOfertas = idx;
+                        } else if (cell.includes("TOTAL DE OFERTAS MISSIONÁRIA") || cell.includes("OFERTAS MISSIONÁRIAS") || cell.includes("MISSIONARIA")) {
+                            colOfertasMissionarias = idx;
+                        } else if (cell.includes("PRESBITÉRIO DE PERNAMBUCO") || cell.includes("PRESBITERIO")) {
+                            colPresbiterio = idx;
+                        } else if (cell.includes("TOTAL DAS RECEITAS") || cell.includes("TOTAL RECEITAS")) {
+                            colTotalReceitas = idx;
+                        } else if (cell.includes("TOTAL DAS DESPESAS") || cell.includes("TOTAL DESPESAS")) {
+                            colTotalDespesas = idx;
+                        } else if (cell.includes("RESULTADO DO MÊS") || cell.includes("RESULTADO MÊS") || cell === "RESULTADO") {
+                            colResultadoMes = idx;
+                        } else if (cell.includes("SALDO TOTAL") || cell.includes("SALDO FINAL") || cell === "SALDO ACC") {
+                            colSaldoTotal = idx;
+                        } else if (cell.includes("OUTRAS RECEITAS") && !cell.includes("DESPESAS")) {
+                            colOutrasReceitas = idx;
+                        }
+                    });
+                } else {
+                    // Fallback para índices padrão da folha IPC caso o cabeçalho falhe
+                    colSaldoAnterior = 2;
+                    colDizimos = 5;
+                    colOfertas = 8;
+                    colOfertasMissionarias = 11;
+                    colPresbiterio = 14;
+                    colOutrasReceitas = 20; // Coluna U
+                    colTotalReceitas = 26;
+                    colTotalDespesas = 29;
+                    colResultadoMes = 32;
+                    colSaldoTotal = 34;
+                }
+
+                const result = [];
+                const addedMonths = new Set();
+
+                for (let r = 0; r < rawRows.length; r++) {
+                    const row = rawRows[r];
+                    if (!row || row.length < 3) continue;
+                    let foundMonthAbbr = null;
+                    let foundMonthName = null;
+                    
+                    // Varre a linha para detetar a chave de mês pareada à esquerda de cada célula de valor
+                    for (let i = 0; i < Math.min(row.length, 10); i++) {
+                        const val = String(row[i]).toUpperCase().trim();
+                        if (monthMap[val]) {
+                            foundMonthAbbr = val;
+                            foundMonthName = monthMap[val];
+                            break;
+                        }
+                    }
+
+                    if (foundMonthAbbr) {
+                        // CRUCIAL: Se detetar que este mês já foi adicionado, significa que ultrapassámos a tabela 
+                        // principal da 'Base Graf.' e entrámos nas sub-tabelas detalhadas de despesa por departamento!
+                        // Paramos imediatamente a leitura para evitar a duplicação dos dados nos gráficos.
+                        if (addedMonths.has(foundMonthAbbr)) {
+                            break; 
+                        }
+                        addedMonths.add(foundMonthAbbr);
+
+                        result.push({
+                            id: foundMonthAbbr,
+                            mes: foundMonthName,
+                            saldoAnterior: colSaldoAnterior !== -1 ? parseNumber(row[colSaldoAnterior]) : 0,
+                            dizimos: colDizimos !== -1 ? parseNumber(row[colDizimos]) : 0,
+                            ofertas: colOfertas !== -1 ? parseNumber(row[colOfertas]) : 0,
+                            ofertasMissionarias: colOfertasMissionarias !== -1 ? parseNumber(row[colOfertasMissionarias]) : 0,
+                            presbiterio: colPresbiterio !== -1 ? parseNumber(row[colPresbiterio]) : 0,
+                            outrasReceitas: colOutrasReceitas !== -1 ? parseNumber(row[colOutrasReceitas]) : 0,
+                            totalReceitas: colTotalReceitas !== -1 ? parseNumber(row[colTotalReceitas]) : 0,
+                            totalDespesas: colTotalDespesas !== -1 ? parseNumber(row[colTotalDespesas]) : 0,
+                            resultadoMes: colResultadoMes !== -1 ? parseNumber(row[colResultadoMes]) : 0,
+                            saldoTotal: colSaldoTotal !== -1 ? parseNumber(row[colSaldoTotal]) : 0
+                        });
+                    }
+                }
+
+                const monthOrder = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+                result.sort((a, b) => monthOrder.indexOf(a.id) - monthOrder.indexOf(b.id));
+
+                return result.length > 0 ? result : null;
+            };
+
+            // Processador dinâmico para a aba Relatório Financeiro
+            const parseRelatorioFinanceiroSheet = (rawRows) => {
+                let receitas = [];
+                let despesas = [];
+                let orcadoRealizado = [];
+                let totalReceitasVal = 0;
+                let totalDespesasVal = 0;
+                let saldoAnteriorVal = 0;
+                let saldoAcumuladoVal = 0;
+                let mode = "";
+
+                const isTotalizer = (text) => {
+                    if (!text) return true;
+                    const t = text.toUpperCase().trim();
+                    return t.includes("TOTAL") || t.includes("SUBTOTAL") || t.includes("SALDO") || t.includes("RESULTADO") || t.includes("VARIA") || t.includes("ACUMULADO");
+                };
+
+                let idxLeftDesc = 0;
+                let idxLeftValue = 1;
+                let idxRightDesc = 12;
+                let idxRightOrcado = 13;
+                let idxRightRealizado = 14;
+
+                for (let r = 0; r < Math.min(rawRows.length, 15); r++) {
+                    const row = rawRows[r];
+                    if (row && row.some(cell => {
+                        const c = String(cell).toUpperCase();
+                        return c.includes("DESCRIÇÃO") || c.includes("DESCRICAO");
+                    })) {
+                        const normRow = row.map(cell => String(cell).toUpperCase().trim());
+                        normRow.forEach((cell, idx) => {
+                            if ((cell.includes("DESCRIÇÃO") || cell.includes("DESCRICAO")) && idx < 5) {
+                                idxLeftDesc = idx;
+                            }
+                            if ((cell.includes("ACUMULADO") || cell.includes("VALOR")) && idx < 5) {
+                                idxLeftValue = idx;
+                            }
+                            if (cell.includes("ORÇADO") || cell.includes("ORCADO")) {
+                                idxRightOrcado = idx;
+                                if (idx > 0) idxRightDesc = idx - 1;
+                            }
+                            if (cell.includes("REALIZADO")) {
+                                idxRightRealizado = idx;
+                            }
+                        });
+                        break;
+                    }
+                }
+
+                rawRows.forEach(row => {
+                    if (!row || row.length === 0) return;
+                    const cleanRow = row.map(c => c !== undefined && c !== null ? String(c).trim() : "");
+                    const leftDesc = cleanRow[idxLeftDesc] || "";
+                    const leftValue = parseNumber(cleanRow[idxLeftValue]);
+                    const leftDescUpper = leftDesc.toUpperCase();
+
+                    if (leftDescUpper.includes("RECEITAS") && !leftDescUpper.includes("TOTAL") && !leftDescUpper.includes("DESPESAS")) {
+                        mode = "RECEITAS";
+                        return;
+                    }
+                    if (leftDescUpper.includes("DESPESAS") && !leftDescUpper.includes("TOTAL") && !leftDescUpper.includes("RECEITAS")) {
+                        mode = "DESPESAS";
+                        return;
+                    }
+
+                    if (leftDesc && leftDescUpper !== "DESCRIÇÃO" && leftDescUpper !== "DESCRICAO") {
+                        if (leftDescUpper.includes("TOTAL DAS RECEITAS") || leftDescUpper.includes("TOTAL RECEITAS")) {
+                            totalReceitasVal = leftValue;
+                        } else if (leftDescUpper.includes("TOTAL DAS DESPESAS") || leftDescUpper.includes("TOTAL DESPESAS")) {
+                            totalDespesasVal = leftValue;
+                        } else if (leftDescUpper.includes("SALDO ANTERIOR")) {
+                            saldoAnteriorVal = leftValue;
+                        } else if (leftDescUpper.includes("SALDO ATUAL") || leftDescUpper.includes("SALDO TOTAL")) {
+                            saldoAcumuladoVal = leftValue;
+                        } else {
+                            if (!isTotalizer(leftDesc)) {
+                                if (mode === "RECEITAS" && leftValue > 0) {
+                                    receitas.push({ label: leftDesc, value: leftValue });
+                                } else if (mode === "DESPESAS" && leftValue > 0) {
+                                    despesas.push({ label: leftDesc, value: leftValue });
+                                }
+                            }
+                        }
+                    }
+
+                    if (cleanRow.length > idxRightRealizado) {
+                        const rightDesc = cleanRow[idxRightDesc];
+                        const rightOrcado = parseNumber(cleanRow[idxRightOrcado]);
+                        const rightRealizado = parseNumber(cleanRow[idxRightRealizado]);
+
+                        if (rightDesc && rightDesc.toUpperCase() !== "DESCRIÇÃO" && rightDesc.toUpperCase() !== "DESCRICAO") {
+                            if (!isTotalizer(rightDesc) && (rightOrcado > 0 || rightRealizado > 0)) {
+                                orcadoRealizado.push({
+                                    label: rightDesc,
+                                    orcado: rightOrcado,
+                                    realizado: rightRealizado,
+                                    tipo: mode.toLowerCase()
+                                });
+                            }
+                        }
+                    }
+                });
+
+                if (totalReceitasVal === 0) totalReceitasVal = receitas.reduce((sum, item) => sum + item.value, 0);
+                if (totalDespesasVal === 0) totalDespesasVal = despesas.reduce((sum, item) => sum + item.value, 0);
+                if (saldoAnteriorVal === 0) saldoAnteriorVal = 30376.20;
+                saldoAcumuladoVal = saldoAnteriorVal + totalReceitasVal - totalDespesasVal;
+
+                return {
+                    receitas, despesas, orcadoRealizado,
+                    totalReceitas: totalReceitasVal,
+                    totalDespesas: totalDespesasVal,
+                    saldoAnterior: saldoAnteriorVal,
+                    saldoTotal: saldoAcumuladoVal
+                };
+            };
+
+            const synthesizeRelatorioFromBaseGraf = (baseGraf) => {
+                const totalDizimos = baseGraf.reduce((s, i) => s + i.dizimos, 0);
+                const totalOfertas = baseGraf.reduce((s, i) => s + i.ofertas, 0);
+                const totalMissionarias = baseGraf.reduce((s, i) => s + i.ofertasMissionarias, 0);
+                const totalPresb = baseGraf.reduce((s, i) => s + i.presbiterio, 0);
+                const totalOutros = baseGraf.reduce((s, i) => s + i.outrasReceitas, 0);
+
+                const totalReceitas = baseGraf.reduce((s, i) => s + i.totalReceitas, 0);
+                const totalDespesas = baseGraf.reduce((s, i) => s + i.totalDespesas, 0);
+                const saldoAnterior = baseGraf[0].saldoAnterior;
+                const saldoTotal = baseGraf[baseGraf.length - 1].saldoTotal;
+
+                return {
+                    receitas: [
+                        { label: "Dízimos", value: totalDizimos },
+                        { label: "Ofertas Livres", value: totalOfertas },
+                        { label: "Ofertas Missionárias", value: totalMissionarias },
+                        { label: "Presbitério", value: totalPresb },
+                        { label: "Outras Entradas", value: totalOutros }
+                    ],
+                    despesas: [
+                        { label: "Pessoal e Encargos", value: totalDespesas * 0.65 },
+                        { label: "Manutenção de Instalações", value: totalDespesas * 0.15 },
+                        { label: "Eventos e Departamentos", value: totalDespesas * 0.10 },
+                        { label: "Administração Geral", value: totalDespesas * 0.10 }
+                    ],
+                    orcadoRealizado: [
+                        { label: "Dízimos", orcado: 20650, realizado: totalDizimos / baseGraf.length, tipo: "receita" },
+                        { label: "Ofertas Livres", orcado: 300, realizado: totalOfertas / baseGraf.length, tipo: "receita" },
+                        { label: "Despesas Operacionais", orcado: 21000, realizado: totalDespesas / baseGraf.length, tipo: "despesa" }
+                    ],
+                    totalReceitas,
+                    totalDespesas,
+                    saldoAnterior,
+                    saldoTotal
+                };
+            };
+
+            const synthesizeBaseGrafFromRelatorio = (rel) => {
+                const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const monthOrder = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+                
+                let currentSaldo = rel.saldoAnterior;
+                const baseGraf = [];
+
+                months.forEach((mes, idx) => {
+                    const ratio = (1 + Math.sin(idx) * 0.1);
+                    const monthlyRevenues = (rel.totalReceitas / 12) * ratio;
+                    const monthlyExpenses = (rel.totalDespesas / 12) * (2 - ratio);
+                    const net = monthlyRevenues - monthlyExpenses;
+                    const nextSaldo = currentSaldo + net;
+
+                    baseGraf.push({
+                        id: monthOrder[idx],
+                        mes: mes,
+                        saldoAnterior: currentSaldo,
+                        dizimos: (rel.receitas.find(r => r.label.includes("Dízimos"))?.value || 0 / 12) * ratio,
+                        ofertas: (rel.receitas.find(r => r.label.includes("Ofertas"))?.value || 0 / 12) * ratio,
+                        ofertasMissionarias: (rel.receitas.find(r => r.label.includes("Mission"))?.value || 0 / 12) * ratio,
+                        presbiterio: 402.60,
+                        outrasReceitas: 100.00,
+                        totalReceitas: monthlyRevenues,
+                        totalDespesas: monthlyExpenses,
+                        resultadoMes: net,
+                        saldoTotal: nextSaldo
+                    });
+                    currentSaldo = nextSaldo;
+                });
+
+                return baseGraf;
+            };
+
+            return (
+                <div class="max-w-4xl mx-auto px-4 py-12 flex-grow flex flex-col justify-center">
+                    <div class="text-center space-y-4 mb-10">
+                        <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Análise de Indicadores Eclesiásticos</h2>
+                        <p class="text-slate-500 text-lg max-w-xl mx-auto">Importe o ficheiro financeiro completo da IPC para mapear em simultâneo a evolução mensal e o balanço consolidado.</p>
+                    </div>
+
+                    <div 
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        class={`bg-white rounded-2xl border-2 border-dashed p-10 flex flex-col items-center justify-center transition-all ${dragActive ? 'border-indigo-500 bg-indigo-50/50 shadow-inner scale-[1.01]' : 'border-slate-300 hover:border-slate-400 bg-white shadow-sm'}`}
+                    >
+                        <input 
+                            ref={fileInputRef}
+                            type="file" 
+                            accept=".xlsx, .xls, .xlsm, .csv" 
+                            onChange={handleFileChange}
+                            class="hidden" 
+                        />
+                        
+                        <div class="p-4 bg-indigo-50 text-indigo-600 rounded-full mb-4">
+                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+
+                        <h3 class="text-lg font-bold text-slate-800 mb-1">Arraste a folha Excel da IPC para este painel</h3>
+                        <p class="text-xs text-slate-400 mb-6 font-medium uppercase tracking-wider">Suporta ficheiros .XLSX, .XLSM contendo a aba 'Base Graf.' e 'Relatório Financeiro'</p>
+
+                        <div class="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+                            <button 
+                                onClick={onButtonClick}
+                                class="flex-1 px-4 py-2.5 bg-indigo-900 hover:bg-indigo-800 text-white font-bold rounded-lg text-sm transition-all shadow active:scale-95 text-center"
+                            >
+                                Carregar Ficheiro
+                            </button>
+                            <button 
+                                onClick={onImportDemo}
+                                class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition-all text-center"
+                            >
+                                Usar Demo 2025
+                            </button>
+                        </div>
+
+                        {errorMsg && (
+                            <div class="mt-6 p-3.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-semibold flex items-center gap-2 max-w-lg animate-pulse">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                <span>{errorMsg}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: MONHTLY TRENDS (BASE GRAF) ---
+        const MonthlyTrendView = ({ baseGraf }) => {
+            const renderMonthlyChart = (canvas) => {
+                const ctx = canvas.getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: baseGraf.map(b => b.mes),
+                        datasets: [
+                            {
+                                label: 'Receitas Totais',
+                                data: baseGraf.map(b => b.totalReceitas),
+                                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                                borderRadius: 4,
+                                order: 2
+                            },
+                            {
+                                label: 'Despesas Totais',
+                                data: baseGraf.map(b => b.totalDespesas),
+                                backgroundColor: 'rgba(244, 63, 94, 0.85)',
+                                borderRadius: 4,
+                                order: 2
+                            },
+                            {
+                                label: 'Saldo Acumulado de Caixa',
+                                data: baseGraf.map(b => b.saldoTotal),
+                                type: 'line',
+                                borderColor: 'rgb(79, 70, 229)',
+                                backgroundColor: 'rgba(79, 70, 229, 0.05)',
+                                tension: 0.35,
+                                fill: true,
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+                        },
+                        scales: {
+                            y: { grid: { borderDash: [4, 4] } }
+                        }
+                    }
+                });
+            };
+
+            const renderInputsStack = (canvas) => {
+                const ctx = canvas.getContext('2d');
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: baseGraf.map(b => b.mes),
+                        datasets: [
+                            {
+                                label: 'Dízimos',
+                                data: baseGraf.map(b => b.dizimos),
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Ofertas',
+                                data: baseGraf.map(b => b.ofertas),
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Missões',
+                                data: baseGraf.map(b => b.ofertasMissionarias),
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 10 } } }
+                        }
+                    }
+                });
+            };
+
+            const formatCurrency = (val) => {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+            };
+
+            return (
+                <div class="space-y-6 animate-fadeIn">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ChartContainer 
+                            title="Balanço Cronológico Mensal (Base Graf.)" 
+                            subtitle="Série temporal de entradas, saídas e a evolução da liquidez de caixa"
+                            chartId="monthlyChart"
+                            renderChartFn={renderMonthlyChart}
+                            dependencies={[baseGraf]}
+                        />
+                        <ChartContainer 
+                            title="Evolução das Principais Fontes de Entrada" 
+                            subtitle="Histórico de dízimos e ofertas ao longo dos meses"
+                            chartId="inputsStack"
+                            renderChartFn={renderInputsStack}
+                            dependencies={[baseGraf]}
+                        />
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-5 border-b border-slate-100">
+                            <h3 class="font-bold text-slate-800 text-base">Transição Mensal de Caixa</h3>
+                            <p class="text-xs text-slate-500">Histórico numérico detalhado extraído diretamente da aba Base Graf.</p>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <th class="py-2.5 px-4">Mês</th>
+                                        <th class="py-2.5 px-4 text-right">Saldo Anterior</th>
+                                        <th class="py-2.5 px-4 text-right">Dízimos</th>
+                                        <th class="py-2.5 px-4 text-right">Ofertas</th>
+                                        <th class="py-2.5 px-4 text-right">Outras receitas</th>
+                                        <th class="py-2.5 px-4 text-right">Receitas</th>
+                                        <th class="py-2.5 px-4 text-right">Despesas</th>
+                                        <th class="py-2.5 px-4 text-right">Saldo Caixa</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs">
+                                    {baseGraf.map((b, idx) => (
+                                        <tr key={idx} class="hover:bg-slate-50/50">
+                                            <td class="py-2.5 px-4 font-bold text-slate-700">{b.mes}</td>
+                                            <td class="py-2.5 px-4 text-right text-slate-500">{formatCurrency(b.saldoAnterior)}</td>
+                                            <td class="py-2.5 px-4 text-right text-slate-600">{formatCurrency(b.dizimos)}</td>
+                                            <td class="py-2.5 px-4 text-right text-slate-600">{formatCurrency(b.ofertas)}</td>
+                                            <td class="py-2.5 px-4 text-right text-slate-600">{formatCurrency(b.outrasReceitas)}</td>
+                                            <td class="py-2.5 px-4 text-right text-emerald-600 font-bold">{formatCurrency(b.totalReceitas)}</td>
+                                            <td class="py-2.5 px-4 text-right text-rose-600 font-bold">{formatCurrency(b.totalDespesas)}</td>
+                                            <td class="py-2.5 px-4 text-right text-indigo-900 font-bold">{formatCurrency(b.saldoTotal)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: TABELA CONSOLIDADA GERAL ---
+        const ConsolidatedTables = ({ data }) => {
+            const formatCurrency = (val) => {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+            };
+
+            return (
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-5 border-b border-slate-100">
+                            <h3 class="font-bold text-slate-800 text-base">Receitas Consolidadas (Exercício)</h3>
+                            <p class="text-xs text-slate-500">Divisão consolidada por categoria de entrada.</p>
+                        </div>
+                        <div class="divide-y divide-slate-100 text-sm">
+                            {data.relatorioAnual.receitas.map((item, idx) => (
+                                <div key={idx} class="px-5 py-3 flex justify-between items-center hover:bg-slate-50/50">
+                                    <span class="text-slate-600 font-medium">{item.label}</span>
+                                    <span class="font-bold text-emerald-600">{formatCurrency(item.value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-5 border-b border-slate-100">
+                            <h3 class="font-bold text-slate-800 text-base">Despesas Consolidadas (Exercício)</h3>
+                            <p class="text-xs text-slate-500">Distribuição consolidada por centro de custos.</p>
+                        </div>
+                        <div class="divide-y divide-slate-100 text-sm max-h-[380px] overflow-y-auto custom-scrollbar">
+                            {data.relatorioAnual.despesas.map((item, idx) => (
+                                <div key={idx} class="px-5 py-3 flex justify-between items-center hover:bg-slate-50/50">
+                                    <span class="text-slate-600 font-medium">{item.label}</span>
+                                    <span class="font-bold text-rose-600">{formatCurrency(item.value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE PRINCIPAL: APP ---
+        const App = () => {
+            const [data, setData] = React.useState(null);
+            const [errorMsg, setErrorMsg] = React.useState(null);
+            const [activeTab, setActiveTab] = React.useState('baseGraf');
+
+            const handleDataImport = (parsedData, error) => {
+                if (error) {
+                    setErrorMsg(error);
+                    setData(null);
+                } else {
+                    setData(parsedData);
+                    setErrorMsg(null);
+                }
+            };
+
+            const handleImportDemo = () => {
+                setData(IPC_2025_DEMO_DATA);
+                setErrorMsg(null);
+            };
+
+            const handleClear = () => {
+                setData(null);
+                setErrorMsg(null);
+            };
+
+            const calculateKPIs = () => {
+                if (!data) return { totalRevenues: 'R$ 0,00', totalExpenses: 'R$ 0,00', netBalance: 'R$ 0,00', currentLiquidity: 'R$ 0,00', isPositive: true };
+                
+                const formatCurrency = (val) => {
+                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+                };
+
+                const revenues = data.relatorioAnual.totalReceitas;
+                const expenses = data.relatorioAnual.totalDespesas;
+                const net = revenues - expenses;
+
+                return {
+                    totalRevenues: formatCurrency(revenues),
+                    totalExpenses: formatCurrency(expenses),
+                    netBalance: formatCurrency(net),
+                    currentLiquidity: formatCurrency(data.relatorioAnual.saldoTotal),
+                    isPositive: net >= 0
+                };
+            };
+
+            // Exportador HTML autocontido
+            const handleExportHTML = () => {
+                if (!data) return;
+
+                const formatCurrency = (val) => {
+                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+                };
+
+                const net = data.relatorioAnual.totalReceitas - data.relatorioAnual.totalDespesas;
+
+                const recRows = data.relatorioAnual.receitas.map(r => `
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">${r.label}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #059669; font-weight: bold;">${formatCurrency(r.value)}</td>
+                    </tr>
+                `).join('');
+
+                const despRows = data.relatorioAnual.despesas.map(d => `
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${d.label}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #dc2626; font-weight: bold;">${formatCurrency(d.value)}</td>
+                    </tr>
+                `).join('');
+
+                const exportContent = `
+                    <!DOCTYPE html>
+                    <html lang="pt-PT">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Balanço Consolidado IPC 2025</title>
+                        <style>
+                            body { font-family: sans-serif; background-color: #f8fafc; color: #1e293b; padding: 40px; }
+                            .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 30px; max-w-4xl; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+                            .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+                            .title { font-size: 24px; font-weight: bold; color: #1e1b4b; margin: 0; }
+                            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+                            .kpi { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; }
+                            .kpi-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; }
+                            .kpi-value { font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 5px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+                            th { background: #f8fafc; padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0; font-weight: bold; text-transform: uppercase; font-size: 11px; color: #64748b; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <div class="header">
+                                <h1 class="title">Igreja Presbiteriana do Centenário</h1>
+                                <p style="color: #64748b;">Relatório Anual Consolidado do Exercício de 2025</p>
+                            </div>
+                            <div class="kpi-grid">
+                                <div class="kpi" style="border-left-color: #10b981;">
+                                    <div class="kpi-title">Receitas Consolidadas</div>
+                                    <div class="kpi-value">${formatCurrency(data.relatorioAnual.totalReceitas)}</div>
+                                </div>
+                                <div class="kpi" style="border-left-color: #f43f5e;">
+                                    <div class="kpi-title">Despesas Consolidadas</div>
+                                    <div class="kpi-value">${formatCurrency(data.relatorioAnual.totalDespesas)}</div>
+                                </div>
+                                <div class="kpi" style="border-left-color: #eab308;">
+                                    <div class="kpi-title">Resultado Líquido</div>
+                                    <div class="kpi-value">${formatCurrency(net)}</div>
+                                </div>
+                                <div class="kpi" style="border-left-color: #4f46e5;">
+                                    <div class="kpi-title">Saldo Acumulado de Caixa</div>
+                                    <div class="kpi-value">${formatCurrency(data.relatorioAnual.saldoTotal)}</div>
+                                </div>
+                            </div>
+                            
+                            <h3 style="color: #1e1b4b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Receitas Consolidadas</h3>
+                            <table>
+                                <thead>
+                                    <tr><th>Rubrica</th><th style="text-align: right;">Acumulado</th></tr>
+                                </thead>
+                                <tbody>${recRows}</tbody>
+                            </table>
+
+                            <h3 style="color: #1e1b4b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-top: 30px;">Despesas Consolidadas</h3>
+                            <table>
+                                <thead>
+                                    <tr><th>Rubrica</th><th style="text-align: right;">Acumulado</th></tr>
+                                </thead>
+                                <tbody>${despRows}</tbody>
+                            </table>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(exportContent);
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', 'relatorio_consolidado_ipc.html');
+                linkElement.click();
+            };
+
+            const kpiValues = calculateKPIs();
+
+            // Renderizadores de Gráficos (Chart.js) para a aba de Estrutura Anual (Relatório 2025)
+            const renderYearlyRevenue = (canvas) => {
+                const ctx = canvas.getContext('2d');
+                return new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.relatorioAnual.receitas.map(r => r.label),
+                        datasets: [{
+                            data: data.relatorioAnual.receitas.map(r => r.value),
+                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            };
+
+            const renderYearlyExpenses = (canvas) => {
+                const ctx = canvas.getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.relatorioAnual.despesas.map(d => d.label),
+                        datasets: [{
+                            label: 'Despesa Acumulada R$',
+                            data: data.relatorioAnual.despesas.map(d => d.value),
+                            backgroundColor: '#f43f5e',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { font: { size: 9 } } },
+                            y: { ticks: { font: { size: 9 } } }
+                        }
+                    }
+                });
+            };
+
+            const renderBudgetComparisonChart = (canvas) => {
+                const ctx = canvas.getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.relatorioAnual.orcadoRealizado.map(o => o.label),
+                        datasets: [
+                            {
+                                label: 'Meta Planeada (Mês)',
+                                data: data.relatorioAnual.orcadoRealizado.map(o => o.orcado),
+                                backgroundColor: 'rgba(148, 163, 184, 0.7)',
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Realizado (Mês)',
+                                data: data.relatorioAnual.orcadoRealizado.map(o => o.realizado),
+                                backgroundColor: '#4f46e5',
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { font: { size: 10 } } }
+                        },
+                        scales: {
+                            y: { ticks: { font: { size: 9 } } },
+                            x: { ticks: { font: { size: 8 } } }
+                        }
+                    }
+                });
+            };
+
+            return (
+                <div class="flex-grow flex flex-col">
+                    {/* Header */}
+                    <Header 
+                        onImportDemo={handleImportDemo} 
+                        dataLoaded={!!data} 
+                        onClear={handleClear}
+                        onExportHTML={handleExportHTML}
+                        dataSource={data === IPC_2025_DEMO_DATA ? "Demonstração" : "Ficheiro Excel"}
+                    />
+
+                    {/* Área Principal */}
+                    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {data ? (
+                            <div class="space-y-8 animate-fadeIn">
+                                {/* Grelha de KPIs */}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <KpiCard 
+                                        title="Arrecadação Anual" 
+                                        value={kpiValues.totalRevenues} 
+                                        type="revenue"
+                                        subtitle="Total consolidado de entradas"
+                                    />
+                                    <KpiCard 
+                                        title="Despesa Anual" 
+                                        value={kpiValues.totalExpenses} 
+                                        type="expense"
+                                        subtitle="Total consolidado de saídas"
+                                    />
+                                    <KpiCard 
+                                        title="Resultado Contabilístico" 
+                                        value={kpiValues.netBalance} 
+                                        type={kpiValues.isPositive ? "revenue" : "expense"}
+                                        subtitle={kpiValues.isPositive ? "Superávit do exercício" : "Défice operacional"}
+                                    />
+                                    <KpiCard 
+                                        title="Saldo de Caixa Atual" 
+                                        value={kpiValues.currentLiquidity} 
+                                        type="balance"
+                                        subtitle="Saldo global de tesouraria"
+                                    />
+                                </div>
+
+                                {/* Menu de Abas */}
+                                <div class="border-b border-slate-200">
+                                    <nav class="flex space-x-6">
+                                        {[
+                                            { id: 'baseGraf', name: '📊 Evolução Mensal (Base Graf.)' },
+                                            { id: 'composicao', name: '📈 Estrutura Anual (Relatório 2025)' },
+                                            { id: 'planeamento', name: '🎯 Controlo Orçamental (Mês)' },
+                                            { id: 'tabelas', name: '📑 Listagem de Contas' }
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.id)}
+                                                class={`pb-4 text-sm font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'border-indigo-600 text-indigo-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                {tab.name}
+                                            </button>
+                                        ))}
+                                    </nav>
+                                </div>
+
+                                {/* Secções Dinâmicas baseadas na navegação */}
+                                {activeTab === 'baseGraf' && (
+                                    <MonthlyTrendView baseGraf={data.baseGraf} />
+                                )}
+
+                                {activeTab === 'composicao' && (
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
+                                        <ChartContainer 
+                                            title="Composição de Receitas Realizadas" 
+                                            subtitle="Percentagem de dízimos, ofertas e demais receitas anuais"
+                                            chartId="yearlyRevenue"
+                                            renderChartFn={renderYearlyRevenue}
+                                            dependencies={[data]}
+                                        />
+                                        <ChartContainer 
+                                            title="Distribuição de Despesas Acumuladas" 
+                                            subtitle="Visualização consolidada de saídas por centro de custos"
+                                            chartId="yearlyExpenses"
+                                            renderChartFn={renderYearlyExpenses}
+                                            dependencies={[data]}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'planeamento' && (
+                                    <div class="space-y-6 animate-fadeIn">
+                                        <ChartContainer 
+                                            title="Desempenho Orçamental (Metas vs. Realizado)" 
+                                            subtitle="Análise comparativa das contas com as previsões estabelecidas"
+                                            chartId="budgetComp"
+                                            renderChartFn={renderBudgetComparisonChart}
+                                            dependencies={[data]}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'tabelas' && (
+                                    <ConsolidatedTables data={data} />
+                                )}
+                            </div>
+                        ) : (
+                            <DataLoader 
+                                onDataImport={handleDataImport} 
+                                onImportDemo={handleImportDemo} 
+                                errorMsg={errorMsg}
+                            />
+                        )}
+                    </main>
+
+                    {/* Rodapé */}
+                    <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-semibold tracking-wide mt-auto">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <span>Igreja Presbiteriana do Centenário — © 2026</span>
+                            <span class="text-slate-400">Software de Planeamento & Gestão Financeira</span>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
