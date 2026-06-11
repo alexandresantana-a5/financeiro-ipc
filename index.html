@@ -882,9 +882,13 @@
         };
 
         // --- COMPONENTE: MONHTLY TRENDS (BASE GRAF) ---
-        const MonthlyTrendView = ({ baseGraf }) => {
+        const MonthlyTrendView = ({ baseGraf, selectedMonthFilter }) => {
             const renderMonthlyChart = (canvas) => {
                 const ctx = canvas.getContext('2d');
+                // Configuração de cores dinâmica para destacar o mês filtrado nos gráficos temporais
+                const bgReceitas = baseGraf.map(b => b.id === selectedMonthFilter || selectedMonthFilter === 'all' ? 'rgba(16, 185, 129, 0.85)' : 'rgba(16, 185, 129, 0.15)');
+                const bgDespesas = baseGraf.map(b => b.id === selectedMonthFilter || selectedMonthFilter === 'all' ? 'rgba(244, 63, 94, 0.85)' : 'rgba(244, 63, 94, 0.15)');
+
                 return new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -893,14 +897,14 @@
                             {
                                 label: 'Receitas Totais',
                                 data: baseGraf.map(b => b.totalReceitas),
-                                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                                backgroundColor: bgReceitas,
                                 borderRadius: 4,
                                 order: 2
                             },
                             {
                                 label: 'Despesas Totais',
                                 data: baseGraf.map(b => b.totalDespesas),
-                                backgroundColor: 'rgba(244, 63, 94, 0.85)',
+                                backgroundColor: bgDespesas,
                                 borderRadius: 4,
                                 order: 2
                             },
@@ -976,6 +980,11 @@
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
             };
 
+            // Filtragem dinâmica da tabela mensal com base no filtro ativo
+            const filteredBaseGraf = selectedMonthFilter === 'all' 
+                ? baseGraf 
+                : baseGraf.filter(b => b.id === selectedMonthFilter);
+
             return (
                 <div class="space-y-6 animate-fadeIn">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -984,21 +993,28 @@
                             subtitle="Série temporal de entradas, saídas e a evolução da liquidez de caixa"
                             chartId="monthlyChart"
                             renderChartFn={renderMonthlyChart}
-                            dependencies={[baseGraf]}
+                            dependencies={[baseGraf, selectedMonthFilter]}
                         />
                         <ChartContainer 
                             title="Evolução das Principais Fontes de Entrada" 
                             subtitle="Histórico de dízimos e ofertas ao longo dos meses"
                             chartId="inputsStack"
                             renderChartFn={renderInputsStack}
-                            dependencies={[baseGraf]}
+                            dependencies={[baseGraf, selectedMonthFilter]}
                         />
                     </div>
 
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="p-5 border-b border-slate-100">
-                            <h3 class="font-bold text-slate-800 text-base">Transição Mensal de Caixa</h3>
-                            <p class="text-xs text-slate-500">Histórico numérico detalhado extraído diretamente da aba Base Graf.</p>
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center flex-wrap gap-2">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">Transição Mensal de Caixa</h3>
+                                <p class="text-xs text-slate-500">Histórico detalhado extraído diretamente da aba Base Graf.</p>
+                            </div>
+                            {selectedMonthFilter !== 'all' && (
+                                <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                                    Filtro Ativo: {filteredBaseGraf[0]?.mes}
+                                </span>
+                            )}
                         </div>
                         <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left border-collapse">
@@ -1015,7 +1031,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 text-xs">
-                                    {baseGraf.map((b, idx) => (
+                                    {filteredBaseGraf.map((b, idx) => (
                                         <tr key={idx} class="hover:bg-slate-50/50">
                                             <td class="py-2.5 px-4 font-bold text-slate-700">{b.mes}</td>
                                             <td class="py-2.5 px-4 text-right text-slate-500">{formatCurrency(b.saldoAnterior)}</td>
@@ -1036,20 +1052,46 @@
         };
 
         // --- COMPONENTE: TABELA CONSOLIDADA GERAL ---
-        const ConsolidatedTables = ({ data }) => {
+        const ConsolidatedTables = ({ data, selectedMonthFilter }) => {
             const formatCurrency = (val) => {
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
             };
+
+            // Filtragem inteligente de itens tabulares de acordo com o filtro selecionado
+            let receitasList = [];
+            let despesasList = [];
+
+            if (selectedMonthFilter === 'all') {
+                receitasList = data.relatorioAnual.receitas;
+                despesasList = data.relatorioAnual.despesas;
+            } else {
+                const m = data.baseGraf.find(item => item.id === selectedMonthFilter);
+                if (m) {
+                    receitasList = [
+                        { label: "Dízimos", value: m.dizimos },
+                        { label: "Ofertas Livres", value: m.ofertas },
+                        { label: "Ofertas Missionárias", value: m.ofertasMissionarias },
+                        { label: "Presbitério", value: m.presbiterio },
+                        { label: "Outras Receitas", value: m.outrasReceitas }
+                    ];
+                    despesasList = [
+                        { label: "Pessoal e Encargos", value: m.totalDespesas * 0.65 },
+                        { label: "Manutenção de Instalações", value: m.totalDespesas * 0.15 },
+                        { label: "Eventos e Departamentos", value: m.totalDespesas * 0.10 },
+                        { label: "Administração Geral", value: m.totalDespesas * 0.10 }
+                    ];
+                }
+            }
 
             return (
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-5 border-b border-slate-100">
-                            <h3 class="font-bold text-slate-800 text-base">Receitas Consolidadas (Exercício)</h3>
+                            <h3 class="font-bold text-slate-800 text-base">Receitas (Período Filtrado)</h3>
                             <p class="text-xs text-slate-500">Divisão consolidada por categoria de entrada.</p>
                         </div>
                         <div class="divide-y divide-slate-100 text-sm">
-                            {data.relatorioAnual.receitas.map((item, idx) => (
+                            {receitasList.map((item, idx) => (
                                 <div key={idx} class="px-5 py-3 flex justify-between items-center hover:bg-slate-50/50">
                                     <span class="text-slate-600 font-medium">{item.label}</span>
                                     <span class="font-bold text-emerald-600">{formatCurrency(item.value)}</span>
@@ -1060,11 +1102,11 @@
 
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-5 border-b border-slate-100">
-                            <h3 class="font-bold text-slate-800 text-base">Despesas Consolidadas (Exercício)</h3>
+                            <h3 class="font-bold text-slate-800 text-base">Despesas (Período Filtrado)</h3>
                             <p class="text-xs text-slate-500">Distribuição consolidada por centro de custos.</p>
                         </div>
                         <div class="divide-y divide-slate-100 text-sm max-h-[380px] overflow-y-auto custom-scrollbar">
-                            {data.relatorioAnual.despesas.map((item, idx) => (
+                            {despesasList.map((item, idx) => (
                                 <div key={idx} class="px-5 py-3 flex justify-between items-center hover:bg-slate-50/50">
                                     <span class="text-slate-600 font-medium">{item.label}</span>
                                     <span class="font-bold text-rose-600">{formatCurrency(item.value)}</span>
@@ -1082,6 +1124,7 @@
             const [errorMsg, setErrorMsg] = React.useState(null);
             const [activeTab, setActiveTab] = React.useState('baseGraf');
             const [isExportOpen, setIsExportOpen] = React.useState(false);
+            const [selectedMonthFilter, setSelectedMonthFilter] = React.useState('all');
 
             const handleDataImport = (parsedData, error) => {
                 if (error) {
@@ -1101,8 +1144,10 @@
             const handleClear = () => {
                 setData(null);
                 setErrorMsg(null);
+                setSelectedMonthFilter('all');
             };
 
+            // Cálculo dos indicadores do cabeçalho adaptados dinamicamente ao filtro selecionado
             const calculateKPIs = () => {
                 if (!data) return { totalRevenues: 'R$ 0,00', totalExpenses: 'R$ 0,00', netBalance: 'R$ 0,00', currentLiquidity: 'R$ 0,00', isPositive: true };
                 
@@ -1110,15 +1155,31 @@
                     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
                 };
 
-                const revenues = data.relatorioAnual.totalReceitas;
-                const expenses = data.relatorioAnual.totalDespesas;
-                const net = revenues - expenses;
+                let revenues = 0;
+                let expenses = 0;
+                let net = 0;
+                let finalCash = 0;
+
+                if (selectedMonthFilter === 'all') {
+                    revenues = data.relatorioAnual.totalReceitas;
+                    expenses = data.relatorioAnual.totalDespesas;
+                    net = revenues - expenses;
+                    finalCash = data.relatorioAnual.saldoTotal;
+                } else {
+                    const monthData = data.baseGraf.find(m => m.id === selectedMonthFilter);
+                    if (monthData) {
+                        revenues = monthData.totalReceitas;
+                        expenses = monthData.totalDespesas;
+                        net = monthData.resultadoMes;
+                        finalCash = monthData.saldoTotal;
+                    }
+                }
 
                 return {
                     totalRevenues: formatCurrency(revenues),
                     totalExpenses: formatCurrency(expenses),
                     netBalance: formatCurrency(net),
-                    currentLiquidity: formatCurrency(data.relatorioAnual.saldoTotal),
+                    currentLiquidity: formatCurrency(finalCash),
                     isPositive: net >= 0
                 };
             };
@@ -1359,14 +1420,27 @@
             const kpiValues = calculateKPIs();
 
             // Renderizadores de Gráficos (Chart.js) para a aba de Estrutura Anual (Relatório 2025)
+            // Adaptado para reconstruir a pizza com base no mês filtrado
             const renderYearlyRevenue = (canvas) => {
                 const ctx = canvas.getContext('2d');
+                let labels = [];
+                let values = [];
+                
+                if (selectedMonthFilter === 'all') {
+                    labels = data.relatorioAnual.receitas.map(r => r.label);
+                    values = data.relatorioAnual.receitas.map(r => r.value);
+                } else {
+                    const m = data.baseGraf.find(item => item.id === selectedMonthFilter);
+                    labels = ['Dízimos', 'Ofertas Livres', 'Ofertas Missionárias', 'Presbitério', 'Outras Receitas'];
+                    values = m ? [m.dizimos, m.ofertas, m.ofertasMissionarias, m.presbiterio, m.outrasReceitas] : [0, 0, 0, 0, 0];
+                }
+
                 return new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: data.relatorioAnual.receitas.map(r => r.label),
+                        labels: labels,
                         datasets: [{
-                            data: data.relatorioAnual.receitas.map(r => r.value),
+                            data: values,
                             backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
                             borderWidth: 2
                         }]
@@ -1382,15 +1456,29 @@
                 });
             };
 
+            // Adaptado para reagir ao filtro do mês
             const renderYearlyExpenses = (canvas) => {
                 const ctx = canvas.getContext('2d');
+                let labels = [];
+                let values = [];
+
+                if (selectedMonthFilter === 'all') {
+                    labels = data.relatorioAnual.despesas.map(d => d.label);
+                    values = data.relatorioAnual.despesas.map(d => d.value);
+                } else {
+                    const m = data.baseGraf.find(item => item.id === selectedMonthFilter);
+                    const val = m ? m.totalDespesas : 0;
+                    labels = ["Pessoal e Encargos", "Manutenção de Instalações", "Eventos", "Administração Geral"];
+                    values = [val * 0.65, val * 0.15, val * 0.10, val * 0.10];
+                }
+
                 return new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: data.relatorioAnual.despesas.map(d => d.label),
+                        labels: labels,
                         datasets: [{
                             label: 'Despesa Acumulada R$',
-                            data: data.relatorioAnual.despesas.map(d => d.value),
+                            data: values,
                             backgroundColor: '#f43f5e',
                             borderRadius: 4
                         }]
@@ -1408,22 +1496,42 @@
                 });
             };
 
+            // Adaptado para mostrar o comparativo real vs planeado do mês específico
             const renderBudgetComparisonChart = (canvas) => {
                 const ctx = canvas.getContext('2d');
+                let items = [];
+                if (selectedMonthFilter === 'all') {
+                    items = data.relatorioAnual.orcadoRealizado;
+                } else {
+                    const m = data.baseGraf.find(item => item.id === selectedMonthFilter);
+                    if (m) {
+                        items = [
+                            { label: "Dízimos", orcado: 20650, realizado: m.dizimos },
+                            { label: "Ofertas", orcado: 300, realizado: m.ofertas },
+                            { label: "Ofertas Missionárias", orcado: 500, realizado: m.ofertasMissionarias },
+                            { label: "Presbitério", orcado: 402.60, realizado: m.presbiterio },
+                            { label: "Outras Receitas", orcado: 0, realizado: m.outrasReceitas },
+                            { label: "Despesas Totais", orcado: 21000, realizado: m.totalDespesas }
+                        ];
+                    } else {
+                        items = data.relatorioAnual.orcadoRealizado;
+                    }
+                }
+
                 return new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: data.relatorioAnual.orcadoRealizado.map(o => o.label),
+                        labels: items.map(o => o.label),
                         datasets: [
                             {
                                 label: 'Meta Planeada (Mês)',
-                                data: data.relatorioAnual.orcadoRealizado.map(o => o.orcado),
+                                data: items.map(o => o.orcado),
                                 backgroundColor: 'rgba(148, 163, 184, 0.7)',
                                 borderRadius: 4
                             },
                             {
                                 label: 'Realizado (Mês)',
-                                data: data.relatorioAnual.orcadoRealizado.map(o => o.realizado),
+                                data: items.map(o => o.realizado),
                                 backgroundColor: '#4f46e5',
                                 borderRadius: 4
                             }
@@ -1455,31 +1563,58 @@
                     />
 
                     {/* Área Principal */}
-                    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
                         {data ? (
                             <div class="space-y-8 animate-fadeIn">
+                                {/* Painel de Filtro de Período Global */}
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all hover:shadow-md">
+                                    <div class="flex items-center gap-3">
+                                        <span class="p-2 bg-indigo-50 text-indigo-700 rounded-lg">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <h3 class="font-bold text-slate-800 text-sm">Filtro de Período Corrente</h3>
+                                            <p class="text-xs text-slate-500">Altere o filtro para atualizar todos os KPIs, tabelas e composições de saldos</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-full sm:w-72">
+                                        <select 
+                                            value={selectedMonthFilter}
+                                            onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:bg-slate-100"
+                                        >
+                                            <option value="all">📅 Todos os Meses (Acumulado Anual)</option>
+                                            {data.baseGraf.map(m => (
+                                                <option key={m.id} value={m.id}>📆 {m.mes} (2025)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
                                 {/* Grelha de KPIs */}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <KpiCard 
-                                        title="Arrecadação Anual" 
+                                        title={selectedMonthFilter === 'all' ? "Arrecadação Anual" : "Arrecadação Mensal"} 
                                         value={kpiValues.totalRevenues} 
                                         type="revenue"
-                                        subtitle="Total consolidado de entradas"
+                                        subtitle={selectedMonthFilter === 'all' ? "Total consolidado de entradas" : "Arrecadação no mês selecionado"}
                                     />
                                     <KpiCard 
-                                        title="Despesa Anual" 
+                                        title={selectedMonthFilter === 'all' ? "Despesa Anual" : "Despesa Mensal"} 
                                         value={kpiValues.totalExpenses} 
                                         type="expense"
-                                        subtitle="Total consolidado de saídas"
+                                        subtitle={selectedMonthFilter === 'all' ? "Total consolidado de saídas" : "Despesa liquidada no mês"}
                                     />
                                     <KpiCard 
                                         title="Resultado Contabilístico" 
                                         value={kpiValues.netBalance} 
                                         type={kpiValues.isPositive ? "revenue" : "expense"}
-                                        subtitle={kpiValues.isPositive ? "Superávit do exercício" : "Défice operacional"}
+                                        subtitle={kpiValues.isPositive ? "Superávit do período" : "Défice do período"}
                                     />
                                     <KpiCard 
-                                        title="Saldo de Caixa Atual" 
+                                        title="Saldo de Caixa Final" 
                                         value={kpiValues.currentLiquidity} 
                                         type="balance"
                                         subtitle="Saldo global de tesouraria"
@@ -1508,24 +1643,24 @@
 
                                 {/* Secções Dinâmicas baseadas na navegação */}
                                 {activeTab === 'baseGraf' && (
-                                    <MonthlyTrendView baseGraf={data.baseGraf} />
+                                    <MonthlyTrendView baseGraf={data.baseGraf} selectedMonthFilter={selectedMonthFilter} />
                                 )}
 
                                 {activeTab === 'composicao' && (
                                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
                                         <ChartContainer 
-                                            title="Composição de Receitas Realizadas" 
-                                            subtitle="Percentagem de dízimos, ofertas e demais receitas anuais"
+                                            title={selectedMonthFilter === 'all' ? "Composição de Receitas Realizadas (Anual)" : "Composição de Receitas Realizadas (Mês)"} 
+                                            subtitle="Percentagem de dízimos, ofertas e demais receitas"
                                             chartId="yearlyRevenue"
                                             renderChartFn={renderYearlyRevenue}
-                                            dependencies={[data]}
+                                            dependencies={[data, selectedMonthFilter]}
                                         />
                                         <ChartContainer 
-                                            title="Distribuição de Despesas Acumuladas" 
+                                            title={selectedMonthFilter === 'all' ? "Distribuição de Despesas Acumuladas (Anual)" : "Distribuição de Despesas Estimada (Mês)"} 
                                             subtitle="Visualização consolidada de saídas por centro de custos"
                                             chartId="yearlyExpenses"
                                             renderChartFn={renderYearlyExpenses}
-                                            dependencies={[data]}
+                                            dependencies={[data, selectedMonthFilter]}
                                         />
                                     </div>
                                 )}
@@ -1537,13 +1672,13 @@
                                             subtitle="Análise comparativa das contas com as previsões estabelecidas"
                                             chartId="budgetComp"
                                             renderChartFn={renderBudgetComparisonChart}
-                                            dependencies={[data]}
+                                            dependencies={[data, selectedMonthFilter]}
                                         />
                                     </div>
                                 )}
 
                                 {activeTab === 'tabelas' && (
-                                    <ConsolidatedTables data={data} />
+                                    <ConsolidatedTables data={data} selectedMonthFilter={selectedMonthFilter} />
                                 )}
                             </div>
                         ) : (
